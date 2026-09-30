@@ -311,6 +311,9 @@ PERMISSIONS = [
     ("announcements.write", "维护公告", "announcements", "write"),
     ("audit.read", "查看审计", "audit", "read"),
     ("jobs.run", "执行后台任务", "jobs", "run"),
+    ("birds.read", "查看候鸟观测", "birds", "read"),
+    ("birds.write", "提交候鸟证据", "birds", "write"),
+    ("birds.review", "复核候鸟观测", "birds", "review"),
 ]
 
 
@@ -380,11 +383,30 @@ def init_db() -> None:
             "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at) VALUES('auditor','审计查看员','只读查看业务与审计记录',1,?,?)",
             (now, now),
         )
+        connection.execute(
+            "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at) VALUES('bird_reviewer','候鸟复核员','可查看全部候鸟观测并人工复核、合并',1,?,?)",
+            (now, now),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at) VALUES('bird_volunteer','候鸟志愿者','可提交候鸟证据并查看本人参与的观测链','1',?,?)",
+            (now, now),
+        )
         administrator = connection.execute("SELECT id FROM roles WHERE code='administrator'").fetchone()[0]
         connection.execute(
             "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at) SELECT ?,id,? FROM permissions",
             (administrator, now),
         )
+        for role_code, permission_codes in (
+            ("bird_reviewer", ("birds.read", "birds.write", "birds.review")),
+            ("bird_volunteer", ("birds.write",)),
+            ("auditor", ("birds.read",)),
+        ):
+            role_id = connection.execute("SELECT id FROM roles WHERE code=?", (role_code,)).fetchone()[0]
+            connection.execute(
+                "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at)"
+                " SELECT ?,id,? FROM permissions WHERE code IN ({})".format(",".join("?" for _ in permission_codes)),
+                (role_id, now, *permission_codes),
+            )
 
 
 def migrate_db() -> None:
