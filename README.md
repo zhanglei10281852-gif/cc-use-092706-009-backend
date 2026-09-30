@@ -34,6 +34,18 @@ python -m pytest
 
 测试覆盖参数校验、身份权限、事务边界、任务状态、失败恢复、审计写入和现有生态计算接口。
 
+## 候鸟观测观察链
+
+`/api/birds` 提供迁徙季观测证据合并能力：
+
+- `POST /api/birds/evidence` 提交观测证据（含附件摘要、来源可信度 trusted/standard/low）。带相同 `client_ref` 的重复提交返回同一观察事件与同一条证据，不重复计数。
+- `POST /api/birds/events/{id}/candidate-links` 按时间与空间容差生成候选关联，支持跨日迁徙；被驳回的关联不再重复推荐。
+- `POST /api/birds/merge` 把多条观察事件合并成可复核观察链，合并后保留每条原始证据。
+- 冲突物种不会自动丢弃：低可信来源只降低结论权重，冲突时进入人工复核队列 `GET /api/birds/review-queue`，由复核员 `POST /api/birds/review-items/{id}/decision` 通过或驳回。
+- `POST /api/birds/evidence/{id}/withdraw` 与 `/restore` 撤销/恢复证据，撤销不删除记录，恢复后重新计入共识；全程可在 `/audit-trail` 复核。
+- 角色可见范围：志愿者只见自己参与的观察链、复核员可见并裁定全部链、审计员全局只读、`administrator` 拥有全部权限。
+
+
 ## 编译检查
 
 ```bash

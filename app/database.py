@@ -311,6 +311,9 @@ PERMISSIONS = [
     ("announcements.write", "维护公告", "announcements", "write"),
     ("audit.read", "查看审计", "audit", "read"),
     ("jobs.run", "执行后台任务", "jobs", "run"),
+    ("birds.read", "查看候鸟观测", "birds", "read"),
+    ("birds.observe", "提交候鸟证据", "birds", "observe"),
+    ("birds.review", "复核候鸟观察链", "birds", "review"),
 ]
 
 
@@ -380,10 +383,36 @@ def init_db() -> None:
             "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at) VALUES('auditor','审计查看员','只读查看业务与审计记录',1,?,?)",
             (now, now),
         )
+        connection.execute(
+            "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at) VALUES('volunteer','候鸟志愿者','可提交候鸟观测证据并查看观察链',1,?,?)",
+            (now, now),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO roles(code,name,description,is_system,created_at,updated_at) VALUES('conservationist','候鸟复核员','可复核候鸟观察链与冲突物种判断',1,?,?)",
+            (now, now),
+        )
         administrator = connection.execute("SELECT id FROM roles WHERE code='administrator'").fetchone()[0]
         connection.execute(
             "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at) SELECT ?,id,? FROM permissions",
             (administrator, now),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at) "
+            "SELECT r.id,p.id,? FROM roles r CROSS JOIN permissions p "
+            "WHERE r.code='auditor' AND p.code IN ('audit.read','birds.read')",
+            (now,),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at) "
+            "SELECT r.id,p.id,? FROM roles r CROSS JOIN permissions p "
+            "WHERE r.code='volunteer' AND p.code IN ('birds.read','birds.observe')",
+            (now,),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO role_permissions(role_id,permission_id,granted_at) "
+            "SELECT r.id,p.id,? FROM roles r CROSS JOIN permissions p "
+            "WHERE r.code='conservationist' AND p.code IN ('birds.read','birds.review')",
+            (now,),
         )
 
 
